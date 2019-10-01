@@ -1,5 +1,9 @@
 # PyTorch Project Template
 
+This repository is a by-product of [moemen95's pytorch-template](https://github.com/moemen95/Pytorch-Project-Template). I reduced the size of the template for myself. I left the original `README.md` below.
+
+---
+
 Implement your PyTorch projects the smart way.
 
 A **Scalable template** for PyTorch projects, with examples in Image Segmentation, Object classification, GANs and Reinforcement Learning.
