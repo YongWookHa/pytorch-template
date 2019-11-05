@@ -49,22 +49,27 @@ class ExampleAgent(BaseAgent):
         self.current_iteration = 0
         self.best_metric = 0
 
+        # set cuda flag
+        self.cuda = (self.device == torch.device('cuda')) and self.cfg.cuda
+
         # set the manual seed for torch
         self.manual_seed = self.cfg.seed
         if self.cuda:
             torch.cuda.manual_seed_all(self.manual_seed)
-            torch.cuda.set_device(self.cfg.gpu_device)
+            torch.cuda.set_device(self.device)
             self.model = self.model.cuda()
             self.loss = self.loss.cuda()
+            if self.config.data_parallel:
+                self.model = nn.DataParallel(self.model)
             self.logger.info("Program will run on *****GPU-CUDA***** ")
-            print_cuda_statistics()
         else:
             self.logger.info("Program will run on *****CPU*****\n")
 
-        # Model Loading from cfg if not found start from scratch.
+        # Model Loading from the cfg if not found start from scratch.
         self.load_checkpoint(self.cfg.checkpoint_file)
         # Summary Writer
         self.summary_writer = None
+
 
     def load_checkpoint(self, file_name):
         """
