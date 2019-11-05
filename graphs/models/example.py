@@ -13,7 +13,9 @@ class Example(nn.Module):
         # define layers
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv = nn.Conv2d(in_channels=self.config.input_channels, out_channels=self.config.num_filters, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv = nn.Conv2d(in_channels=self.config.input_channels, 
+                              out_channels=self.config.num_filters, 
+                              kernel_size=3, stride=1, padding=1, bias=False)
 
         # initialize weights
         self.apply(weights_init)

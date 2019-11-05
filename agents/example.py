@@ -1,4 +1,7 @@
 import numpy as np
+import os
+import shutil
+
 import torch
 from torch import nn
 from torch.backends import cudnn
@@ -9,6 +12,7 @@ from tensorboardX import SummaryWriter
 from utils.misc import print_cuda_statistics, get_device
 from agents.base import BaseAgent
 
+# import your custom file
 # from datasets import custom_dataset
 # from graphs.model import model
 # from utils import utils
@@ -20,6 +24,7 @@ class ExampleAgent(BaseAgent):
 
     def __init__(self, cfg):
         super().__init__(cfg)
+        self.cfg = cfg
         print_cuda_statistics()
         self.device = get_device()
 
@@ -33,15 +38,15 @@ class ExampleAgent(BaseAgent):
         # train_dataset, test_dataset = random_split(dataset, 
         #                                             [train_size, test_size])
 
-        self.train_loader = DataLoader(train_dataset, batch_size=config.bs, 
-                                  shuffle=False, num_workers=config.num_w)
-        self.test_loader = DataLoader(test_dataset, batch_size=config.bs, 
-                                  shuffle=False, num_workers=config.num_w)
+        self.train_loader = DataLoader(train_dataset, batch_size=cfg.bs, 
+                                  shuffle=False, num_workers=cfg.num_w)
+        self.test_loader = DataLoader(test_dataset, batch_size=cfg.bs, 
+                                  shuffle=False, num_workers=cfg.num_w)
 
         # define criterion
         self.criterion = Loss()
 
-        # define optimizers for both generator and discriminator
+        # define optimizer
         self.optimizer = None
 
         # initialize counter
@@ -50,23 +55,23 @@ class ExampleAgent(BaseAgent):
         self.best_metric = 0
 
         # set cuda flag
-        self.cuda = (self.device == torch.device('cuda')) and self.cfg.cuda
+        self.cuda = (self.device == torch.device('cuda')) and cfg.cuda
 
         # set the manual seed for torch
-        self.manual_seed = self.cfg.seed
+        self.manual_seed = cfg.seed
         if self.cuda:
             torch.cuda.manual_seed_all(self.manual_seed)
             torch.cuda.set_device(self.device)
             self.model = self.model.cuda()
             self.loss = self.loss.cuda()
-            if self.config.data_parallel:
+            if cfg.data_parallel:
                 self.model = nn.DataParallel(self.model)
             self.logger.info("Program will run on *****GPU-CUDA***** ")
         else:
             self.logger.info("Program will run on *****CPU*****\n")
 
         # Model Loading from the cfg if not found start from scratch.
-        self.load_checkpoint(self.cfg.checkpoint_file)
+        self.load_checkpoint(cfg.checkpoint_file)
         # Summary Writer
         self.summary_writer = None
 
