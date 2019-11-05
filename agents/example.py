@@ -1,38 +1,45 @@
 import numpy as np
-
-from tqdm import tqdm
-import shutil
-import random
-
 import torch
 from torch import nn
 from torch.backends import cudnn
-from torch.autograd import Variable
-
-from agents.base import BaseAgent
-
-# import your classes here
+from torch.utils.data import DataLoader, random_split
 
 from tensorboardX import SummaryWriter
-from utils.metrics import AverageMeter, AverageMeterList
-from utils.misc import print_cuda_statistics
+
+from utils.misc import print_cuda_statistics, get_device
+from agents.base import BaseAgent
+
+# from datasets import custom_dataset
+# from graphs.model import model
+# from utils import utils
 
 cudnn.benchmark = True
 
 
 class ExampleAgent(BaseAgent):
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        print_cuda_statistics()
+        self.device = get_device()
 
         # define models
-        self.model = None
+        self.model
 
         # define data_loader
-        self.data_loader = None
+        train_dataset = custom_dataset(cfg.tr_im_pth, cfg.tr_gt_pth)
+        test_dataset = custom_dataset(cfg.te_im_pth, cfg.te_gt_pth)
+        
+        # train_dataset, test_dataset = random_split(dataset, 
+        #                                             [train_size, test_size])
 
-        # define loss
-        self.loss = None
+        self.train_loader = DataLoader(train_dataset, batch_size=config.bs, 
+                                  shuffle=False, num_workers=config.num_w)
+        self.test_loader = DataLoader(test_dataset, batch_size=config.bs, 
+                                  shuffle=False, num_workers=config.num_w)
+
+        # define criterion
+        self.criterion = Loss()
 
         # define optimizers for both generator and discriminator
         self.optimizer = None
@@ -42,18 +49,11 @@ class ExampleAgent(BaseAgent):
         self.current_iteration = 0
         self.best_metric = 0
 
-        # set cuda flag
-        self.is_cuda = torch.cuda.is_available()
-        if self.is_cuda and not self.config.cuda:
-            self.logger.info("WARNING: You have a CUDA device, so you should probably enable CUDA")
-
-        self.cuda = self.is_cuda & self.config.cuda
-
         # set the manual seed for torch
-        self.manual_seed = self.config.seed
+        self.manual_seed = self.cfg.seed
         if self.cuda:
             torch.cuda.manual_seed_all(self.manual_seed)
-            torch.cuda.set_device(self.config.gpu_device)
+            torch.cuda.set_device(self.cfg.gpu_device)
             self.model = self.model.cuda()
             self.loss = self.loss.cuda()
             self.logger.info("Program will run on *****GPU-CUDA***** ")
@@ -61,8 +61,8 @@ class ExampleAgent(BaseAgent):
         else:
             self.logger.info("Program will run on *****CPU*****\n")
 
-        # Model Loading from the latest checkpoint if not found start from scratch.
-        self.load_checkpoint(self.config.checkpoint_file)
+        # Model Loading from cfg if not found start from scratch.
+        self.load_checkpoint(self.cfg.checkpoint_file)
         # Summary Writer
         self.summary_writer = None
 
@@ -72,16 +72,45 @@ class ExampleAgent(BaseAgent):
         :param file_name: name of the checkpoint file
         :return:
         """
-        pass
+        try:
+            self.logger.info("Loading checkpoint '{}'".format(file_name))
+            checkpoint = torch.load(file_name, map_location=self.device)
 
-    def save_checkpoint(self, file_name="checkpoint.pth.tar", is_best=0):
+            self.current_epoch = checkpoint['epoch']
+            self.current_iteration = checkpoint['iteration']
+            self.model.load_state_dict(checkpoint['model'], strict=False)
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            
+            info = "Checkpoint loaded successfully from "
+            self.logger.info(info + "'{}' at (epoch {}) at (iteration {})\n"
+              .format(file_name, checkpoint['epoch'], checkpoint['iteration']))
+                
+        except OSError as e:
+            self.logger.info("Checkpoint not found in '{}'.".format(file_name))
+            self.logger.info("**First time to train**")
+
+    def save_checkpoint(self, file_name="checkpoint.pth.tar", is_best=False):
         """
         Checkpoint saver
         :param file_name: name of the checkpoint file
-        :param is_best: boolean flag to indicate whether current checkpoint's accuracy is the best so far
+        :param is_best: boolean flag to indicate whether current 
+                        checkpoint's accuracy is the best so far
         :return:
         """
-        pass
+        state = {
+            'epoch': self.current_epoch,
+            'iteration': self.current_iteration,
+            'model' : self.model.state_dict(),
+            'optimizer': self.optimizer.state_dict()
+        }
+
+        # save the state
+        checkpoint_dir = os.path.join(self.exp_dir, 'checkpoints')
+        torch.save(state, os.path.join(checkpoint_dir, file_name))
+
+        if is_best:
+            shutil.copyfile(os.path.join(checkpoint_dir, file_name),
+                            os.path.join(checkpoint_dir, 'best.pt'))
 
     def run(self):
         """
@@ -117,7 +146,8 @@ class ExampleAgent(BaseAgent):
 
     def finalize(self):
         """
-        Finalizes all the operations of the 2 Main classes of the process, the operator and the data loader
+        Finalizes all the operations of the 2 Main classes of the process, 
+        the operator and the data loader
         :return:
         """
         pass

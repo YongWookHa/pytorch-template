@@ -1,0 +1,25 @@
+{
+  "exp_name": "example_exp_0",
+  "agent": "example_exp_0",
+  "mode": "train",
+
+  "cuda": true,
+  "data_parallel" : true,
+  "seed": 1337,
+
+  "train_test_ratio": 0.8,
+  "lr":1e-4,
+  "img_size": 299,
+  "input_channels": 3,
+
+  "epochs": 10,
+  "learning_rate": 0.1,
+  "bs": 256,
+  "validate_freq": 2,
+  "data_shuffle": true,
+
+  "log_interval" : 100,
+  "num_w": 8,
+
+  "checkpoint_filename" : ""
+}

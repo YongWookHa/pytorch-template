@@ -17,12 +17,7 @@ class MyDataset(Dataset):
         self.config = config
 
     def __getitem__(self, index):
-        return self.x[index], self.y[index][1:5]
+        return self.x[index]
     
     def finalize(self):
         pass
-
-
-class MyDataLoader:
-    def __init__(self, config):
-        self.config = config

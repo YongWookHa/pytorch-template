@@ -1,5 +1,6 @@
 import numpy as np
-import pandas as pd
+from torchvision import transforms
+from PIL import Image
 from datetime import datetime
 
 def fetch_cosine_values(seq_len, frequency=0.01, noise=0.1):
@@ -15,3 +16,24 @@ def format_dataset(values, temporal_features):
 
 def matrix_to_array(m):
     return np.asarray(m).reshape(-1)
+
+def read_classes(fn):
+    with open(fn, 'r', encoding='utf8') as f:
+        classes = []
+        line = f.readline().strip()
+        while line:
+            classes.append(line)
+            line = f.readline().strip()
+    assert len(classes) != 0
+    print("number of detected classes : {}".format(len(classes)))
+    return classes
+
+def read_image(fn, size:tuple):
+    # this function reads an image
+    img = Image.open(fn)
+    transformations = transforms.Compose([
+                            transforms.Resize(size, Image.BICUBIC),
+                            transforms.ToTensor()
+                            ])
+    return transformations(img).unsqueeze(0)                     
+    
