@@ -1,8 +1,6 @@
-import numpy as np
 import os
-import shutil
-
 import torch
+import numpy as np
 from torch import nn
 from torch.backends import cudnn
 from torch.utils.data import DataLoader, random_split
@@ -12,7 +10,6 @@ from tensorboardX import SummaryWriter
 from utils.misc import print_cuda_statistics, get_device
 from agents.base import BaseAgent
 
-# import your custom file
 # from datasets import custom_dataset
 # from graphs.model import model
 # from utils import utils
@@ -24,57 +21,53 @@ class ExampleAgent(BaseAgent):
 
     def __init__(self, cfg):
         super().__init__(cfg)
-        self.cfg = cfg
         print_cuda_statistics()
         self.device = get_device()
 
         # define models
         self.model
 
-        # define data_loader
-        train_dataset = custom_dataset(cfg.tr_im_pth, cfg.tr_gt_pth)
-        test_dataset = custom_dataset(cfg.te_im_pth, cfg.te_gt_pth)
+        # define data_loader 1 or 2
+        # 1
+        # tr_dataset = custom_dataset(cfg.tr_data_pth)
+        # te_dataset = custom_dataset(cfg.te_data_pth)
         
-        # train_dataset, test_dataset = random_split(dataset, 
-        #                                             [train_size, test_size])
+        # 2
+        # dataset = custom_dataset(cfg.data_pth)
+        tr_dataset, te_dataset = random_split(dataset, 
+                                               [train_size, test_size])
 
-        self.train_loader = DataLoader(train_dataset, batch_size=cfg.bs, 
-                                  shuffle=False, num_workers=cfg.num_w)
-        self.test_loader = DataLoader(test_dataset, batch_size=cfg.bs, 
-                                  shuffle=False, num_workers=cfg.num_w)
+        self.tr_loader = DataLoader(tr_dataset, batch_size=cfg.bs, 
+                              shuffle=cfg.data_shuffle, num_workers=cfg.num_w)
+        self.te_loader = DataLoader(te_dataset, batch_size=cfg.bs, 
+                              shuffle=cfg.data_shuffle, num_workers=cfg.num_w)
 
         # define criterion
         self.criterion = Loss()
 
-        # define optimizer
+        # define optimizers for both generator and discriminator
         self.optimizer = None
 
         # initialize counter
-        self.current_epoch = 0
-        self.current_iteration = 0
-        self.best_metric = 0
-
-        # set cuda flag
-        self.cuda = (self.device == torch.device('cuda')) and cfg.cuda
+        self.current_epoch = 1
+        self.current_iteration = 1
+        self.best_metric = 0  # loss or accuracy or etc
+        self.best_info = ''
 
         # set the manual seed for torch
-        self.manual_seed = cfg.seed
+        torch.cuda.manual_seed_all(self.cfg.seed)
         if self.cuda:
-            torch.cuda.manual_seed_all(self.manual_seed)
-            torch.cuda.set_device(self.device)
             self.model = self.model.cuda()
-            self.loss = self.loss.cuda()
-            if cfg.data_parallel:
-                self.model = nn.DataParallel(self.model)
             self.logger.info("Program will run on *****GPU-CUDA***** ")
         else:
             self.logger.info("Program will run on *****CPU*****\n")
 
-        # Model Loading from the cfg if not found start from scratch.
-        self.load_checkpoint(cfg.checkpoint_file)
+        # Model Loading from cfg if not found start from scratch.
+        self.exp_dir = os.path.join('./experiments', cfg.exp_name)
+        self.load_checkpoint(self.cfg.checkpoint_file)
         # Summary Writer
-        self.summary_writer = None
-
+        self.summary_writer = SummaryWriter(log_dir=os.path.join(self.exp_dir,
+                                                              'summaries'))
 
     def load_checkpoint(self, file_name):
         """
@@ -138,7 +131,10 @@ class ExampleAgent(BaseAgent):
         Main training loop
         :return:
         """
-        pass
+        for e in range(self.current_epoch, self.cfg.epochs+1):
+            train_one_epoch()
+            validate()
+            self.current_epoch += 1
 
     def train_one_epoch(self):
         """
@@ -160,4 +156,5 @@ class ExampleAgent(BaseAgent):
         the operator and the data loader
         :return:
         """
+        print(self.best_info)
         pass
